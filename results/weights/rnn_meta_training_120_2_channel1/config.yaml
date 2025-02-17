@@ -2,7 +2,7 @@
 run_name: 'rnn_meta_training_120_2_channel1'
 
 # coding parameters
-use_ecc: False # Either run with/without ECC. values: [True, False].
+use_ecc: True # Either run with/without ECC. values: [True, False].
 n_symbols: 2 # Number of symbols in ECC, each one is hard-coded 8 bits. values: int.
 
 # channel

@@ -1,6 +1,7 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
+from python_code.utils.repr_utils import trainer_repr
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
 from python_code.utils.python_utils import copy_model
@@ -19,6 +20,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Trainer(object):
+    def __repr__(self):
+        return trainer_repr(self)
+
     def __init__(self, config_path=None, **kwargs):
 
         # general

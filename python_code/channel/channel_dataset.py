@@ -16,7 +16,10 @@ class ChannelModelDataset(Dataset):
     """
     Dataset object for the channel. Used in training and evaluation to draw minibatches of channel words and transmitted
     """
-
+    def __repr__(self):
+        return f'ChannelModelDataset'
+    def __str__(self):
+        return f'ChannelModelDatasetstr'
     def __init__(self, channel_type: str,
                  block_length: int,
                  transmission_length: int,

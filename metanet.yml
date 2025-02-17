@@ -1,4 +1,4 @@
-name: base
+name: metanet
 channels:
   - pytorch
   - oce
