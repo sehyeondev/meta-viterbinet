@@ -1,7 +1,8 @@
 import torch
 from typing import Tuple
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 def calculate_error_rates(prediction: torch.Tensor, target: torch.Tensor) -> Tuple[float, float, torch.Tensor]:

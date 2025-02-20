@@ -7,8 +7,8 @@ import math
 
 from python_code.utils.trellis_utils import create_transition_table, acs_block
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 class VADetector(nn.Module):
     """
@@ -65,7 +65,7 @@ class VADetector(nn.Module):
                 repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
                 dim=1)
             # to llr representation
-            priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
+            priors = priors ** 2 / 2 + math.log(math.sqrt(2 * math.pi))
         else:
             raise Exception('No such channel defined!!!')
         return priors
