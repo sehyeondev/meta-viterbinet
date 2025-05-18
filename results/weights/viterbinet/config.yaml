@@ -21,7 +21,7 @@ val_block_length: 120 # coherence block time. values: int.
 val_frames: 5 # number of validation frames. values: int.
 val_SNR_start: -10 # start SNR value. values: float.
 val_SNR_end: 10 # end SNR value. values: float.
-val_SNR_step: 2 # step. values: float.
+val_SNR_step: 1 # step. values: float.
 eval_mode: 'aggregated' # Type of evaluation. Per snr - 'aggregated', Per block - 'by_word'.
 
 # train hyperparameters
@@ -31,7 +31,7 @@ train_minibatch_num: 25 # number of minibatches. values: int.
 train_minibatch_size: 32 # the size of a given minibatch. values: int.
 train_SNR_start: -10 # start SNR value. values: float.
 train_SNR_end: 10 # end SNR value. values: float.
-train_SNR_step: 2 # step. values: float.
+train_SNR_step: 1 # step. values: float.
 lr: 0.001 # learning rate. values: float.
 loss_type: 'CrossEntropy' # Loss type. values: 'BCE','CrossEntropy','MSE'.
 optimizer_type: 'Adam' # Optimizer type. values: 'Adam','RMSprop','SGD'.

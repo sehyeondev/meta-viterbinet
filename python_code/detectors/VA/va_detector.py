@@ -7,8 +7,8 @@ import math
 
 from python_code.utils.trellis_utils import create_transition_table, acs_block
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = "cpu"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = "cpu"
 
 class VADetector(nn.Module):
     """

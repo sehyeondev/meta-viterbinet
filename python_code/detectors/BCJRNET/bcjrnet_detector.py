@@ -1,95 +1,56 @@
-from python_code.channel.channel_estimation import estimate_channel
-from python_code.channel.modulator import BPSKModulator
-import numpy as np
-import torch
-import torch.nn as nn
-import math
-
 from python_code.utils.trellis_utils import create_transition_table, acs_block
+from typing import Dict
+import torch.nn as nn
+import torch
+import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# device = "cpu"
+HIDDEN1_SIZE = 100
+HIDDEN2_SIZE = 50
 
 
-class BCJRDetector(nn.Module):
+class BCJRNETDetector(nn.Module):
     """
-    This module implements the classic VA detector
+    This implements the VA decoder by an NN on each stage
     """
 
     def __init__(self,
                  n_states: int,
                  memory_length: int,
-                 transmission_length: int,
-                 val_words: int,
-                 channel_type: str,
-                 noisy_est_var: float,
-                 fading: bool,
-                 fading_taps_type: int,
-                 channel_coefficients: str):
+                 transmission_lengths: Dict[str, int]):
 
-        super(BCJRDetector, self).__init__()
-        self.memory_length = memory_length
-        self.transmission_length = transmission_length
-        self.val_words = val_words
+        super(BCJRNETDetector, self).__init__()
+        self.memory_length  = memory_length
+        self.transmission_lengths = transmission_lengths
+        self.transmission_length = transmission_lengths['val']
         self.n_states = n_states
-        self.channel_type = channel_type
-        self.noisy_est_var = noisy_est_var
-        self.fading = fading
-        self.fading_taps_type = fading_taps_type
-        self.channel_coefficients = channel_coefficients
         self.transition_table_array = create_transition_table(n_states)
-        self.transition_table = torch.Tensor(self.transition_table_array).to(device).long()
+        self.transition_table = torch.Tensor(self.transition_table_array).to(device)
+        self.initialize_dnn()
 
-
-    def compute_state_priors(self, h: np.ndarray) -> torch.Tensor:
-        all_states_decimal = np.arange(self.n_states).astype(np.uint8).reshape(-1, 1)
-        all_states_binary = np.unpackbits(all_states_decimal, axis=1).astype(int)
-        if self.channel_type == 'ISI_AWGN':
-            all_states_symbols = BPSKModulator.modulate(all_states_binary[:, -self.memory_length:])
-        else:
-            raise Exception('No such channel defined!!!')
-        state_priors = np.dot(all_states_symbols, h[:, ::-1].T) # CHECK: convolution is needed
-        return torch.Tensor(state_priors).to(device)
-
-    def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float, phase: str, count: int = None):
-        # estimate channel per word (only changes between the h's if fading is True)
-        self.h = np.concatenate([estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                             fading=self.fading, index=index, fading_taps_type=self.fading_taps_type,
-                                             channel_coefficients=self.channel_coefficients[phase]) for index in
-                            range(self.val_words)],
-                           axis=0)
-
-        if count is not None:
-            self.h = self.h[count].reshape(1, -1)
-
-        # compute priors
-        self.state_priors = self.compute_state_priors(self.h)
-
-        if self.channel_type == 'ISI_AWGN':
-            self.priors = y.unsqueeze(dim=2) - self.state_priors.T.repeat(
-                repeats=[y.shape[0] // self.state_priors.shape[1], 1]).unsqueeze(
-                dim=1)
-            # to llr representation
-            sigma = 10 ** (-snr / 10)
-            self.priors = self.priors ** 2 / (2 * sigma ** 2) + math.log(math.sqrt(2 * math.pi) * sigma) # CHECK: plus or minus?
-        else:
-            raise Exception('No such channel defined!!!')
-        return self.priors
+    def initialize_dnn(self):
+        layers = [nn.Linear(1, HIDDEN1_SIZE),
+                  nn.Sigmoid(),
+                  nn.Linear(HIDDEN1_SIZE, HIDDEN2_SIZE),
+                  nn.ReLU(),
+                  nn.Linear(HIDDEN2_SIZE, self.n_states)]
+        self.net = nn.Sequential(*layers).to(device)
 
     def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None,
                 count: int = None) -> torch.Tensor:
         """
-        The forward pass of the BCJR algorithm
-        :param y: input values (batch)
+        The forward pass of the ViterbiNet algorithm
+        :param y: input values, size [batch_size,transmission_length]
         :param phase: 'train' or 'val'
         :param snr: channel snr
         :param gamma: channel coefficient
-        :returns tensor of detected word, same shape as y
+        :returns if in 'train' - the estimated priors [batch_size,transmission_length,n_states]
+        if in 'val' - the detected words [n_batch,transmission_length]
         """
-        # compute transition likelihood priors
-        priors = self.compute_likelihood_priors(y, snr, gamma, phase, count)
+        # compute priors
+        priors = self.net(y.reshape(-1, 1)).reshape(y.shape[0], y.shape[1], self.n_states)
 
-        if phase == 'val':            
+        if phase == 'val':
             #### BCJR (sum product) ####
             # compute forward probabilities
             alpha = torch.zeros([y.shape[0], self.transmission_length+1, self.n_states]).to(device)
@@ -158,5 +119,4 @@ class BCJRDetector(nn.Module):
             decoded_word = torch.cat([prepend_word, decoded_word], dim=1)
             return decoded_word[:,:self.transmission_length]
         else:
-            raise NotImplementedError("No implemented training for this decoder!!!")
-
+            return priors
